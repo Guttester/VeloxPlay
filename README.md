@@ -1,113 +1,138 @@
-# VeloxPlay backend
+<div align="center">
 
-## PostgreSQL e execução
+# 🎬 VeloxPlay 2.0
 
-A aplicação usa PostgreSQL. H2 é dependência exclusiva dos testes: não existe fallback
-para banco local. O banco `veloxplay` precisa existir no servidor PostgreSQL.
+**Plataforma demonstrativa de catálogo de filmes, com autenticação, favoritos e painéis por perfil de acesso.**
 
-Configure as variáveis de `.env.example` na execução da IDE, no terminal, na
-hospedagem ou em um arquivo `.env` na pasta do backend. A aplicação carrega esse
-arquivo automaticamente quando iniciada dessa pasta; variáveis de ambiente têm
-prioridade. Use sintaxe Java `.properties`, sem aspas em torno dos valores.
-O `.env` está ignorado pelo Git e não é incluído no JAR. São obrigatórios
-`SPRING_DATASOURCE_PASSWORD` e `JWT_SECRET` (chave privada com pelo menos 32 bytes).
-URL padrão: `jdbc:postgresql://localhost:5432/veloxplay`; usuário padrão: `postgres`.
+![Java](https://img.shields.io/badge/Java-17-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5.6-6DB33F?logo=springboot&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
-Um `.env` local com uma chave JWT aleatória foi preparado neste checkout. Preencha
-nele `SPRING_DATASOURCE_PASSWORD` e ajuste URL/usuário ao PostgreSQL do seu pgAdmin.
-Não publique nem compartilhe o arquivo. Na hospedagem, use variáveis de ambiente.
+</div>
 
-Exemplo no PowerShell (preencha os valores no seu ambiente):
+## Sobre o projeto
 
-```powershell
-$env:SPRING_DATASOURCE_URL = 'jdbc:postgresql://localhost:5432/veloxplay'
-$env:SPRING_DATASOURCE_USERNAME = 'postgres'
-# Configure SPRING_DATASOURCE_PASSWORD e JWT_SECRET na sua execução privada.
-mvn spring-boot:run
+O **VeloxPlay 2.0** é um projeto de portfólio voltado à construção de uma experiência de catálogo de filmes e à implementação de uma API REST com autenticação e controle de permissões. O projeto reúne uma interface web distribuída em `Front/` e um backend em Spring Boot.
+
+O foco técnico inclui segurança, persistência de dados, separação de responsabilidades e testes automatizados. **Não se trata de um serviço comercial de transmissão de filmes.**
+
+## Funcionalidades
+
+- Navegação e consulta pública do catálogo de filmes.
+- Cadastro e autenticação de usuários com tokens JWT.
+- Gerenciamento de perfil e favoritos para usuários autenticados.
+- Controle de acesso por perfis `USER`, `MODERATOR` e `ADMIN`.
+- Área demonstrativa de moderação com dados fictícios e isolamento por sessão.
+- Painel administrativo para gerenciamento de filmes e usuários reais.
+- Limitação de requisições nas rotas sensíveis de autenticação.
+
+## Tecnologias
+
+| Camada | Tecnologias |
+| --- | --- |
+| Interface web | Frontend compilado disponível em `Front/` |
+| API | Java 17, Spring Boot 3.5.6, Spring Web |
+| Segurança | Spring Security, JWT, BCrypt, validação de entrada |
+| Persistência | Spring Data JPA, Hibernate, PostgreSQL |
+| Testes | JUnit / Spring Boot Test, Spring Security Test, H2 em memória |
+| Empacotamento | Maven e Docker (build em múltiplas etapas) |
+
+## Perfis de acesso
+
+| Perfil | Acesso |
+| --- | --- |
+| **Visitante** | Consulta pública de filmes |
+| **USER** | Catálogo, perfil próprio e favoritos |
+| **MODERATOR** | Recursos de USER e operações na área demonstrativa `/demo`, sem acessar a administração real |
+| **ADMIN** | Administração real de filmes e usuários, além da área demonstrativa |
+
+A autorização é aplicada no **backend**. A ocultação de elementos na interface não substitui o controle de acesso da API.
+
+## API — principais rotas
+
+| Recurso | Rotas | Observação |
+| --- | --- | --- |
+| Autenticação | `/auth/login`, `/auth/register`, `/auth/refresh` | Acesso público, com proteções de autenticação |
+| Filmes | `/filmes`, `/filmes/{id}` | Leitura pública; escrita restrita a ADMIN |
+| Administração | `/admin/**`, `/users` | Operações protegidas por perfil |
+| Demonstração | `/demo/filmes`, `/demo/users`, `/demo/stats`, `/demo/reset` | Área isolada para MODERATOR e ADMIN |
+
+## Execução local
+
+**Pré-requisitos:** Java 17, Maven (ou Maven Wrapper) e uma instância PostgreSQL acessível.
+
+1. Crie no PostgreSQL o banco de dados `veloxplay`.
+2. Copie `.env.example` para `.env` na raiz do backend.
+3. Configure pelo menos `SPRING_DATASOURCE_PASSWORD` e `JWT_SECRET` (segredo privado de, no mínimo, 32 bytes), além da URL e do usuário do banco, caso sejam diferentes dos padrões.
+4. Execute na pasta do backend:
+
+```bash
+./mvnw spring-boot:run
 ```
 
-A porta HTTP padrão é 8080. Os dados antigos em `data/veloxplay.mv.db` não são
-apagados nem importados: o catálogo e as contas demo são preparados no PostgreSQL.
-O usuário do banco deve poder criar/alterar tabelas enquanto `ddl-auto=update` for
-usado. `schema-postgresql.sql` cria/preenche `role=USER` e `destaque=false` nas
-tabelas antigas e amplia o CHECK de `role`, antes de o Hibernate e o bootstrap
-executarem. Não apaga registros existentes nem promove usuários antigos a ADMIN.
+No Windows, utilize `mvnw.cmd spring-boot:run`.
 
-## Contas e permissões
+A API utiliza a porta **8080** por padrão. O PostgreSQL é obrigatório em execução normal; o H2 é usado exclusivamente pelos testes.
 
-| Perfil | Permissões |
-| --- | --- |
-| Visitante | `GET /filmes` e `GET /filmes/{id}` |
-| USER | Catálogo, perfil próprio e favoritos próprios; não exclui usuários nem altera filmes |
-| MODERATOR | Funções de USER e CRUD isolado em `/demo`; sem acesso a usuários reais e administração real |
-| ADMIN | Administração real de filmes e usuários; também pode testar `/demo` |
+> **Segurança:** não versione o arquivo `.env`, senhas, chaves JWT nem credenciais privadas de administrador. Em produção, forneça os segredos por variáveis de ambiente ou por um gerenciador de segredos.
 
-As contas públicas padrão são `demo@veloxplay.com / Demo@123` (USER) e
-`moderador@veloxplay.com / Moderador@123` (MODERATOR). São persistidas no banco.
-O bootstrap cria cada conta que estiver ausente, inclusive em banco já populado.
-Contas demo não podem ser editadas ou excluídas pela API, nem por ADMIN. Seus
-favoritos continuam funcionando e são compartilhados por quem usa a mesma conta.
+## Docker
 
-A antiga conta pública `admin@veloxplay.com` perde ADMIN na inicialização,
-mesmo com `APP_SEED_ENABLED=false`. Se o e-mail do novo moderador estiver livre,
-ela é renomeada e recebe a senha configurada para o moderador. Se já houver
-moderador, a conta antiga permanece protegida com MODERATOR, sem privilégios reais.
-E-mails de sistema são reservados contra cadastro e renomeação via API.
+O `Dockerfile` contém um build em múltiplas etapas: Maven compila a aplicação, e uma imagem Java 17 JRE executa o JAR com um usuário sem privilégios de root.
 
-Para criar o administrador privado, configure `ADMIN_EMAIL` e `ADMIN_PASSWORD`
-(12–72 caracteres). Não há senha privada padrão. Não use os e-mails públicos.
-Uma conta já existente com esse e-mail deve ser ADMIN; o bootstrap não promove
-uma conta comum nem redefine a senha de um administrador existente.
-O administrador não pode excluir a si próprio por essa rota.
+O contêiner da API **não substitui o PostgreSQL**: configure a conexão e os segredos para o ambiente de execução. O frontend compilado está na pasta `Front/` e deve ser publicado por um servidor web apropriado.
 
-`APP_SEED_ENABLED=false` impede a criação de contas demo ausentes e do catálogo;
-não remove dados existentes nem desativa as proteções das contas já cadastradas.
-O catálogo inicial é criado apenas quando a tabela de filmes está vazia.
+## Contas demonstrativas
 
-## CRUD demonstrativo
+O projeto contempla duas contas públicas de demonstração, criadas conforme as configurações de inicialização:
 
-Faça login como MODERATOR e envie `Authorization: Bearer <accessToken>`:
-
-| Métodos | Rota | Dados |
+| Perfil | E-mail | Senha padrão de demonstração |
 | --- | --- | --- |
-| GET, POST | `/demo/filmes` | Lista/cria filmes fictícios |
-| GET, PUT, DELETE | `/demo/filmes/{id}` | Consulta/edita/exclui filme fictício |
-| GET, POST | `/demo/users` | Lista/cria usuários fictícios |
-| GET, PUT, DELETE | `/demo/users/{id}` | Consulta/edita/exclui usuário fictício |
-| GET | `/demo/stats` | Contagens da demonstração |
-| DELETE | `/demo/reset` | Restaura apenas a demonstração da sessão atual |
+| USER | `demo@veloxplay.com` | `Demo@123` |
+| MODERATOR | `moderador@veloxplay.com` | `Moderador@123` |
 
-Filmes usam o mesmo corpo de `POST /filmes`. Usuários fictícios recebem
-`{"nome":"Exemplo","email":"exemplo@example.invalid","role":"USER"}`.
-Não recebem senha e nunca podem fazer login; até um role ADMIN nesse registro
-é apenas dado fictício, sem autoridade no sistema real.
+Essas contas **não possuem privilégios administrativos reais**. Configure o administrador privado com `ADMIN_EMAIL` e `ADMIN_PASSWORD` no ambiente. Nunca publique suas credenciais.
 
-Cada access token possui um identificador aleatório assinado (`jti`). A área demo
-é associada a esse identificador, não ao e-mail compartilhado. Dois logins da
-mesma conta recebem áreas diferentes. Copiar o mesmo token compartilha a mesma
-área. Renovar o token inicia uma nova demonstração.
+A área `/demo` trabalha com dados fictícios isolados por token, com limites de registros e expiração automática. Ela não altera os filmes nem os usuários reais.
 
-A área começa com até 40 cópias de filmes públicos e dois usuários fictícios.
-Não copia usuários reais, senhas, e-mails privados ou favoritos. Os registros ficam
-somente em `demo_workspaces` e `demo_entries`; não aparecem no catálogo público.
-IDs de outras sessões retornam 404. Não há publicação nem promoção de dados demo.
+## Testes automatizados
 
-O limite é de 50 filmes e 20 usuários por área, e 200 áreas simultâneas. A duração
-é o menor valor entre `DEMO_TTL_MINUTES` (padrão 60, de 1 a 1440) e a expiração
-do access token (padrão 15 minutos). Áreas expiradas são rejeitadas; a limpeza
-automática roda a cada 10 minutos e remove apenas dados demo expirados. Desative
-com `DEMO_CLEANUP_ENABLED=false` se preferir limpeza operacional própria.
+Para executar a suíte de testes:
 
-## Integração do frontend
+```bash
+./mvnw test
+```
 
-O frontend apresenta a conta pública de moderador e reconhece `MODERATOR`.
-O componente de `/moderador` usa `/demo/filmes` e `/demo/users`, calcula as contagens
-a partir das listas e permite restaurar a área com `/demo/reset`. ADMIN continua
-usando `/filmes`, `/users` e `/admin/stats` no painel real de `/admin`.
-Esconder botões não é a proteção: o backend retorna 403 nas operações proibidas.
+Os testes usam **H2 em memória**, sem modificar o banco PostgreSQL real. A suíte contempla cenários de autenticação, permissões, proteção das contas de demonstração, favoritos, isolamento de sessões e operações administrativas.
 
-## Verificação
+## Estrutura do repositório
 
-`mvn test` executa os testes em H2 em memória, sem tocar o PostgreSQL real.
-Os testes cobrem privilégios, proteção das contas demo, favoritos, isolamento
-entre sessões, CRUD real do administrador, migração da conta antiga e tokens.
+```text
+VeloxPlay/
+├── src/                 # Código-fonte e testes do backend
+├── Front/               # Arquivos compilados da interface web
+├── .mvn/                # Maven Wrapper
+├── .env.example         # Exemplo de configuração
+├── Dockerfile           # Build e imagem de execução da API
+├── mvnw / mvnw.cmd      # Scripts do Maven Wrapper
+├── pom.xml              # Dependências e configuração Maven
+└── README.md
+```
+
+## Observações de implantação
+
+- A inicialização depende de um PostgreSQL acessível e das variáveis de ambiente obrigatórias.
+- As políticas de CORS e de proxies confiáveis devem ser configuradas conforme o domínio e a infraestrutura publicados.
+- O bootstrap pode preparar contas demonstrativas e um catálogo inicial; seu comportamento é controlado pelas variáveis de ambiente.
+- A aplicação utiliza atualização de esquema via Hibernate por padrão; em ambientes críticos, considere um processo controlado de migrações.
+
+---
+
+<div align="center">
+
+**VeloxPlay 2.0 — Projeto de portfólio de desenvolvimento de software**
+
+[Repositório no GitHub](https://github.com/Guttester/VeloxPlay)
+
+</div>
